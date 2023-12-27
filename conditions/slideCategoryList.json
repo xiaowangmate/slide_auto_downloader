@@ -1,0 +1,236 @@
+[
+    {
+        "id": "3",
+        "name": "Business",
+        "url": "business",
+        "isFeatured": true
+    },
+    {
+        "id": "35",
+        "name": "Mobile",
+        "url": "mobile",
+        "isFeatured": true
+    },
+    {
+        "id": "25",
+        "name": "Social Media",
+        "url": "Social-Media",
+        "isFeatured": true
+    },
+    {
+        "id": "24",
+        "name": "Marketing",
+        "url": "Marketing",
+        "isFeatured": true
+    },
+    {
+        "id": "16",
+        "name": "Technology",
+        "url": "technology",
+        "isFeatured": true
+    },
+    {
+        "id": "14",
+        "name": "Art \u0026 Photos",
+        "url": "art-photos",
+        "isFeatured": true
+    },
+    {
+        "id": "4",
+        "name": "Career",
+        "url": "career",
+        "isFeatured": true
+    },
+    {
+        "id": "5",
+        "name": "Design",
+        "url": "design",
+        "isFeatured": true
+    },
+    {
+        "id": "6",
+        "name": "Education",
+        "url": "education",
+        "isFeatured": true
+    },
+    {
+        "id": "36",
+        "name": "Presentations \u0026 Public Speaking",
+        "url": "presentations-public-speaking",
+        "isFeatured": false
+    },
+    {
+        "id": "30",
+        "name": "Government \u0026 Nonprofit",
+        "url": "government-nonprofit",
+        "isFeatured": false
+    },
+    {
+        "id": "31",
+        "name": "Healthcare",
+        "url": "healthcare",
+        "isFeatured": false
+    },
+    {
+        "id": "32",
+        "name": "Internet",
+        "url": "internet",
+        "isFeatured": false
+    },
+    {
+        "id": "33",
+        "name": "Law",
+        "url": "law",
+        "isFeatured": false
+    },
+    {
+        "id": "34",
+        "name": "Leadership \u0026 Management",
+        "url": "leadership-management",
+        "isFeatured": false
+    },
+    {
+        "id": "1",
+        "name": "Automotive",
+        "url": "automotive",
+        "isFeatured": false
+    },
+    {
+        "id": "27",
+        "name": "Engineering",
+        "url": "engineering",
+        "isFeatured": false
+    },
+    {
+        "id": "37",
+        "name": "Software",
+        "url": "software",
+        "isFeatured": false
+    },
+    {
+        "id": "38",
+        "name": "Recruiting \u0026 HR",
+        "url": "recruiting-hr",
+        "isFeatured": false
+    },
+    {
+        "id": "39",
+        "name": "Retail",
+        "url": "retail",
+        "isFeatured": false
+    },
+    {
+        "id": "40",
+        "name": "Sales",
+        "url": "sales",
+        "isFeatured": false
+    },
+    {
+        "id": "41",
+        "name": "Services",
+        "url": "services",
+        "isFeatured": false
+    },
+    {
+        "id": "42",
+        "name": "Science",
+        "url": "science",
+        "isFeatured": false
+    },
+    {
+        "id": "43",
+        "name": "Small Business \u0026 Entrepreneurship",
+        "url": "small-business-entrepreneurship",
+        "isFeatured": false
+    },
+    {
+        "id": "29",
+        "name": "Food",
+        "url": "food",
+        "isFeatured": false
+    },
+    {
+        "id": "28",
+        "name": "Environment",
+        "url": "environment",
+        "isFeatured": false
+    },
+    {
+        "id": "8",
+        "name": "Economy \u0026 Finance",
+        "url": "economy-finance",
+        "isFeatured": false
+    },
+    {
+        "id": "26",
+        "name": "Data \u0026 Analytics",
+        "url": "data-analytics",
+        "isFeatured": false
+    },
+    {
+        "id": "23",
+        "name": "Investor Relations",
+        "url": "investor-relations",
+        "isFeatured": false
+    },
+    {
+        "id": "22",
+        "name": "Sports",
+        "url": "sports",
+        "isFeatured": false
+    },
+    {
+        "id": "21",
+        "name": "Spiritual",
+        "url": "spiritual",
+        "isFeatured": false
+    },
+    {
+        "id": "20",
+        "name": "News \u0026 Politics",
+        "url": "news-politics",
+        "isFeatured": false
+    },
+    {
+        "id": "19",
+        "name": "Travel",
+        "url": "travel",
+        "isFeatured": false
+    },
+    {
+        "id": "18",
+        "name": "Self Improvement",
+        "url": "self-improvement",
+        "isFeatured": false
+    },
+    {
+        "id": "15",
+        "name": "Real Estate",
+        "url": "real-estate",
+        "isFeatured": false
+    },
+    {
+        "id": "7",
+        "name": "Entertainment \u0026 Humor",
+        "url": "entertainment-humor",
+        "isFeatured": false
+    },
+    {
+        "id": "11",
+        "name": "Health \u0026 Medicine",
+        "url": "health-medicine",
+        "isFeatured": false
+    },
+    {
+        "id": "10",
+        "name": "Devices \u0026 Hardware",
+        "url": "devices-hardware",
+        "isFeatured": false
+    },
+    {
+        "id": "9",
+        "name": "Lifestyle",
+        "url": "lifestyle",
+        "isFeatured": false
+    }
+]
