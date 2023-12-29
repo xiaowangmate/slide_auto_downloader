@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import time
 import requests
 from bs4 import BeautifulSoup
 
@@ -24,6 +25,7 @@ class SlideDownloader:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.46",
             "Cookie": self.cookie
         }
+        self.slide_data_api = "https://api.slidesharecdn.com/graphql"
 
     def read_cookie(self):
         with open(self.cookie_path, mode="r", encoding="utf-8") as r:
@@ -56,23 +58,6 @@ class SlideDownloader:
         csrf_token = json.loads(csrf_token)["csrf_token"]
         return csrf_token
 
-    def start_crawl_all_url(self, init_link):
-        response = requests.get(init_link, headers=self.headers).text
-        soup = BeautifulSoup(response, "html.parser")
-        self.crawl_all_url(soup)
-
-    def crawl_all_url(self, soup):
-        all_urls = soup.find_all('a')
-        for url in all_urls:
-            href = url.get('href')
-            if href:
-                if re.findall("https://www.slideshare.net/.*?/.*",
-                              href) and '#' not in href and href != 'https://www.slideshare.net/rss/latest':
-                    if href not in self.crawled_url_list:
-                        print(f"crawl url: {href}")
-                        self.append_crawled_list(href)
-                        self.get_slide_info(href)
-
     def get_slide_info(self, slide_link):
         response = requests.get(slide_link, headers=self.headers).text
         soup = BeautifulSoup(response, "html.parser")
@@ -80,33 +65,36 @@ class SlideDownloader:
         script_string = script_tag.string
         script_json = json.loads(script_string)
         # print(f"script json: {script_json}")
-        pageProps = script_json["props"]["pageProps"]
+        page_props = script_json["props"]["pageProps"]
 
-        if "slideshow" in pageProps.keys():
-            slide_show = pageProps["slideshow"]
-            allowDownloads = slide_show["allowDownloads"]
-            if allowDownloads:
+        if "slideshow" in page_props.keys():
+            slide_show = page_props["slideshow"]
+            allow_downloads = slide_show["allowDownloads"]
+            if allow_downloads:
                 download_key = slide_show["downloadKey"]
                 slideshow_id = slide_show["id"]
                 slide_download_url = self.get_slide_download_url(slide_link, download_key, slideshow_id)
                 if slide_download_url:
-                    self.download_slide(slideshow_id, slide_download_url)
-                    json_info = {
-                        "name": f"{slideshow_id}.pdf",
-                        "title": slide_show["strippedTitle"],
-                        "description": slide_show["description"],
-                        "categories": slide_show["categories"],
-                        "link": slide_show["canonicalUrl"],
-                        "likes": slide_show["likes"],
-                        "views": soup.select(".MetadataAbovePlayer_root__2cGVN .Likes_root__WVQ1_")[-1].text.replace(
-                            " views", ""),
-                        "creation_time": slide_show["createdAt"],
-                        "sharer": slide_show["username"]
-                    }
-                    self.append_jsonl(json.dumps(json_info, ensure_ascii=False))
-                    self.append_crawled_list(slide_link)
+                    if "limit of 100 downloads in last 24 hours" not in slide_download_url:
+                        self.download_slide(slideshow_id, slide_download_url)
+                        json_info = {
+                            "name": f"{slideshow_id}.pdf",
+                            "title": slide_show["strippedTitle"],
+                            "description": slide_show["description"],
+                            "categories": slide_show["categories"],
+                            "link": slide_show["canonicalUrl"],
+                            "likes": slide_show["likes"],
+                            "views": soup.select(".MetadataAbovePlayer_root__2cGVN .Likes_root__WVQ1_")[
+                                -1].text.replace(
+                                " views", ""),
+                            "creation_time": slide_show["createdAt"],
+                            "sharer": slide_show["username"]
+                        }
+                        self.append_jsonl(json.dumps(json_info, ensure_ascii=False))
+                        self.append_crawled_list(slide_link)
+                    else:
+                        raise ValueError("limit of 100 downloads in last 24 hours")
 
-        self.crawl_all_url(soup)
         print("-" * 50)
 
     def get_slide_download_url(self, slide_link, download_key, slideshow_id):
@@ -129,11 +117,13 @@ class SlideDownloader:
         verify_url = f"https://www.slideshare.net/slideshow/download?download_key={download_key}&slideshow_id={slideshow_id}"
         response = requests.post(verify_url, headers=mock_headers).content
         response = json.loads(response)
-        slide_download_url = None
         if response["success"]:
             slide_download_url = response["url"]
             print(f"slide download url: {slide_download_url}")
-        return slide_download_url
+            return slide_download_url
+        else:
+            print(f"get slide download url fail: {response['error']}")
+            return response['error']
 
     def download_slide(self, slideshow_id, slide_download_url):
         response = requests.get(slide_download_url, headers=self.headers)
@@ -159,8 +149,115 @@ class SlideDownloader:
             self.crawled_url_list.append(crawled_url)
             print(f"write crawled url: {crawled_url}.")
 
+    def get_popular_payload(self, end_cursor, slide_category_id):
+        popular_payload = {
+            "query": "\n  query ($after: String, $first: Int, $categoryId: Int, $mediaType: Media!, $period: ListPeriod!, $language: String) {\n    popular(after: $after, first: $first, categoryId: $categoryId, mediaType: $mediaType, period: $period, language: $language) {\n      edges {\n        cursor\n        node {\n          \n  createdAt\n  id\n  canonicalUrl\n  strippedTitle\n  thumbnail\n  title\n  totalSlides\n  type\n  user {\n    id\n    name\n    login\n  }\n  viewCount\n  likeCount\n\n        }\n      }\n      pageInfo {\n        \n  hasNextPage\n  hasPreviousPage\n  startCursor\n  endCursor\n\n      }\n    }\n  }\n",
+            "variables": {
+                "after": end_cursor,
+                "first": 100,  # max value 100
+                "categoryId": slide_category_id,
+                "mediaType": "ALL",
+                "period": "YEAR",
+                "language": "en"
+            },
+            "locale": "en"
+        }
+        return popular_payload
+
+    def get_latest_payload(self, end_cursor, slide_category_id):
+        latest_payload = {
+            "query": "\n  query ($after: String, $first: Int, $categoryId: Int, $mediaType: Media!, $language: String) {\n    latest(after: $after, first: $first, categoryId: $categoryId, mediaType: $mediaType, language: $language) {\n      edges {\n        cursor\n        node {\n          \n  createdAt\n  id\n  canonicalUrl\n  strippedTitle\n  thumbnail\n  title\n  totalSlides\n  type\n  user {\n    id\n    name\n    login\n  }\n  viewCount\n  likeCount\n\n        }\n      }\n      pageInfo {\n        \n  hasNextPage\n  hasPreviousPage\n  startCursor\n  endCursor\n\n      }\n    }\n  }\n",
+            "variables": {
+                "after": end_cursor,
+                "first": 100,
+                "categoryId": slide_category_id,
+                "language": "en",
+                "mediaType": "ALL"
+            },
+            "locale": "en"
+        }
+        return latest_payload
+
+    def get_featured_payload(self, end_cursor, slide_category_id):
+        featured_payload = {
+            "query": "\n  query ($after: String, $first: Int, $categoryId: Int, $mediaType: Media!) {\n    featured(after: $after, first: $first, categoryId: $categoryId, mediaType: $mediaType) {\n      edges {\n        cursor\n        node {\n          \n  createdAt\n  id\n  canonicalUrl\n  strippedTitle\n  thumbnail\n  title\n  totalSlides\n  type\n  user {\n    id\n    name\n    login\n  }\n  viewCount\n  likeCount\n\n        }\n      }\n      pageInfo {\n        \n  hasNextPage\n  hasPreviousPage\n  startCursor\n  endCursor\n\n      }\n    }\n  }\n",
+            "variables": {
+                "after": end_cursor,
+                "first": 100,
+                "categoryId": slide_category_id,
+                "mediaType": "ALL"
+            },
+            "locale": "en"
+        }
+        return featured_payload
+
+    def crawl_all_categories(self):
+        for slide_category in self.slide_category_list:
+            slide_category_url = "https://www.slideshare.net/category/" + slide_category["url"]
+            slide_category_id = slide_category["id"]
+            self.get_category_sub_urls(slide_category_url, slide_category_id)
+
+    def get_category_sub_urls(self, slide_category_url, slide_category_id):
+        response = requests.get(slide_category_url, headers=self.headers).text
+        soup = BeautifulSoup(response, "html.parser")
+        script_tag = soup.find("script", {"id": "__NEXT_DATA__"})
+        script_string = script_tag.string
+        script_json = json.loads(script_string)
+        # print(f"script json: {script_json}")
+        results = script_json["props"]["pageProps"]["results"]
+        for category_type in ["popular", "latest", "featured"]:
+            if category_type in results.keys():
+                category_type_results = results[category_type]
+
+                for category_type_result in category_type_results["results"]:
+                    category_sub_url = category_type_result["canonicalUrl"]
+                    if category_sub_url not in self.crawled_url_list:
+                        try:
+                            print(f"crawl url: {category_sub_url}")
+                            self.get_slide_info(category_sub_url)
+                        except Exception as e:
+                            print(f"crawl error: {str(e)}")
+                            if str(e) == "limit of 100 downloads in last 24 hours":
+                                print(f"pause 24 hours.")
+                                time.sleep(72000)
+
+                category_type_page_info = category_type_results["pageInfo"]
+                has_next_page = category_type_page_info["hasNextPage"]
+                if has_next_page:
+                    end_cursor = category_type_page_info["endCursor"]
+                    self.get_category_type_next_slides(category_type, end_cursor, slide_category_id)
+
+    def get_category_type_next_slides(self, category_type, after_cursor, slide_category_id):
+        if category_type == "popular":
+            payload = self.get_popular_payload(after_cursor, slide_category_id)
+        elif category_type == "latest":
+            payload = self.get_latest_payload(after_cursor, slide_category_id)
+        else:
+            payload = self.get_featured_payload(after_cursor, slide_category_id)
+
+        response = requests.post(self.slide_data_api, headers=self.headers, json=payload).text
+        category_type_results = json.loads(response)["data"][category_type]
+
+        for category_type_result in category_type_results["edges"]:
+            category_sub_url = category_type_result["node"]["canonicalUrl"]
+            if category_sub_url not in self.crawled_url_list:
+                try:
+                    print(f"crawl url: {category_sub_url}")
+                    self.get_slide_info(category_sub_url)
+                except Exception as e:
+                    print(f"crawl error: {str(e)}")
+                    if str(e) == "limit of 100 downloads in last 24 hours":
+                        print(f"pause 24 hours.")
+                        time.sleep(72000)
+
+        category_type_page_info = category_type_results["pageInfo"]
+        has_next_page = category_type_page_info["hasNextPage"]
+        if has_next_page:
+            end_cursor = category_type_page_info["endCursor"]
+            self.get_category_type_next_slides(category_type, end_cursor, slide_category_id)
+
 
 if __name__ == '__main__':
     sd = SlideDownloader()
-    # sd.get_slide_info("https://www.slideshare.net/stinsondesign/10-things-your-audience-hates-about-your-presentation")
-    sd.start_crawl_all_url("https://www.slideshare.net/")
+    # sd.get_slide_info("https://www.slideshare.net/LilyRay1/googles-just-not-that-into-you-understanding-core-updates-search-intent")
+    sd.crawl_all_categories()
