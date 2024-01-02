@@ -88,7 +88,8 @@ class SlideDownloader:
                                 -1].text.replace(
                                 " views", ""),
                             "creation_time": slide_show["createdAt"],
-                            "sharer": slide_show["username"]
+                            "sharer": slide_show["username"],
+                            "total_slides": slide_show["totalSlides"]
                         }
                         self.append_jsonl(json.dumps(json_info, ensure_ascii=False))
                         self.append_crawled_list(slide_link)
