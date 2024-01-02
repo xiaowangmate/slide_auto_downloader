@@ -95,7 +95,12 @@ class SlideDownloader:
                         self.append_crawled_list(slide_link)
                     else:
                         raise ValueError("limit of 100 downloads in last 24 hours")
-
+            else:
+                print(f"slideshow not allow downloads.")
+                self.append_crawled_list(slide_link)
+        else:
+            print(f"slideshow not in page_props.keys: {page_props}")
+            
         print("-" * 50)
 
     def get_slide_download_url(self, slide_link, download_key, slideshow_id):
