@@ -157,7 +157,7 @@ class SlideDownloader:
                 "after": end_cursor,
                 "first": 100,  # max value 100
                 "categoryId": slide_category_id,
-                "mediaType": "ALL",
+                "mediaType": "PRESENTATIONS",
                 "period": "YEAR",
                 "language": "en"
             },
@@ -173,7 +173,7 @@ class SlideDownloader:
                 "first": 100,
                 "categoryId": slide_category_id,
                 "language": "en",
-                "mediaType": "ALL"
+                "mediaType": "PRESENTATIONS"
             },
             "locale": "en"
         }
@@ -186,7 +186,7 @@ class SlideDownloader:
                 "after": end_cursor,
                 "first": 100,
                 "categoryId": slide_category_id,
-                "mediaType": "ALL"
+                "mediaType": "PRESENTATIONS"
             },
             "locale": "en"
         }
