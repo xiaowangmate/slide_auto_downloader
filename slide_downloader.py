@@ -195,7 +195,7 @@ class SlideDownloader:
     def crawl_all_categories(self):
         for slide_category in self.slide_category_list:
             slide_category_url = "https://www.slideshare.net/category/" + slide_category["url"]
-            slide_category_id = slide_category["id"]
+            slide_category_id = int(slide_category["id"])
             self.get_category_sub_urls(slide_category_url, slide_category_id)
 
     def get_category_sub_urls(self, slide_category_url, slide_category_id):
