@@ -76,22 +76,27 @@ class SlideDownloader:
                 slide_download_url = self.get_slide_download_url(slide_link, download_key, slideshow_id)
                 if slide_download_url:
                     if "limit of 100 downloads in last 24 hours" not in slide_download_url:
-                        self.download_slide(slideshow_id, slide_download_url)
-                        json_info = {
-                            "name": f"{slideshow_id}.pdf",
-                            "title": slide_show["strippedTitle"],
-                            "description": slide_show["description"],
-                            "categories": slide_show["categories"],
-                            "link": slide_show["canonicalUrl"],
-                            "likes": slide_show["likes"],
-                            "views": soup.select(".MetadataAbovePlayer_root__2cGVN .Likes_root__WVQ1_")[
-                                -1].text.replace(
-                                " views", ""),
-                            "creation_time": slide_show["createdAt"],
-                            "sharer": slide_show["username"],
-                            "total_slides": slide_show["totalSlides"]
-                        }
-                        self.append_jsonl(json.dumps(json_info, ensure_ascii=False))
+                        slide_title = slide_show["strippedTitle"]
+                        slider_likes = slide_show["likes"]
+                        if self.slide_filter(slide_title, slider_likes):
+                            self.download_slide(slideshow_id, slide_download_url)
+                            json_info = {
+                                "name": f"{slideshow_id}.pdf",
+                                "title": slide_show["strippedTitle"],
+                                "description": slide_show["description"],
+                                "categories": slide_show["categories"],
+                                "link": slide_show["canonicalUrl"],
+                                "likes": slide_show["likes"],
+                                "views": soup.select(".MetadataAbovePlayer_root__2cGVN .Likes_root__WVQ1_")[
+                                    -1].text.replace(
+                                    " views", ""),
+                                "creation_time": slide_show["createdAt"],
+                                "sharer": slide_show["username"],
+                                "total_slides": slide_show["totalSlides"]
+                            }
+                            self.append_jsonl(json.dumps(json_info, ensure_ascii=False))
+                        else:
+                            print(f"slideshow does not meet conditions, skip.")
                         self.append_crawled_list(slide_link)
                     else:
                         raise ValueError("limit of 100 downloads in last 24 hours")
@@ -254,7 +259,7 @@ class SlideDownloader:
                     print(f"crawl error: {str(e)}")
                     if str(e) == "limit of 100 downloads in last 24 hours":
                         print(f"pause 24 hours.")
-                        time.sleep(72000)
+                        time.sleep(21600)
 
         category_type_page_info = category_type_results["pageInfo"]
         has_next_page = category_type_page_info["hasNextPage"]
