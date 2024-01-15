@@ -73,20 +73,20 @@ class SlideDownloader:
             if allow_downloads:
                 download_key = slide_show["downloadKey"]
                 slideshow_id = slide_show["id"]
-                slide_download_url = self.get_slide_download_url(slide_link, download_key, slideshow_id)
-                if slide_download_url:
-                    if "limit of 100 downloads in last 24 hours" not in slide_download_url:
-                        slide_title = slide_show["strippedTitle"]
-                        slider_likes = slide_show["likes"]
-                        if self.slide_filter(slide_title, slider_likes):
+                slide_title = slide_show["strippedTitle"]
+                slider_likes = slide_show["likes"]
+                if self.slide_filter(slide_title, slider_likes):
+                    slide_download_url = self.get_slide_download_url(slide_link, download_key, slideshow_id)
+                    if slide_download_url:
+                        if "limit of 100 downloads in last 24 hours" not in slide_download_url:
                             self.download_slide(slideshow_id, slide_download_url)
                             json_info = {
                                 "name": f"{slideshow_id}.pdf",
-                                "title": slide_show["strippedTitle"],
+                                "title": slide_title,
                                 "description": slide_show["description"],
                                 "categories": slide_show["categories"],
                                 "link": slide_show["canonicalUrl"],
-                                "likes": slide_show["likes"],
+                                "likes": slider_likes,
                                 "views": soup.select(".MetadataAbovePlayer_root__2cGVN .Likes_root__WVQ1_")[
                                     -1].text.replace(
                                     " views", ""),
@@ -95,18 +95,28 @@ class SlideDownloader:
                                 "total_slides": slide_show["totalSlides"]
                             }
                             self.append_jsonl(json.dumps(json_info, ensure_ascii=False))
+                            self.append_crawled_list(slide_link)
                         else:
-                            print(f"slideshow does not meet conditions, skip.")
-                        self.append_crawled_list(slide_link)
+                            raise ValueError("limit of 100 downloads in last 24 hours")
                     else:
-                        raise ValueError("limit of 100 downloads in last 24 hours")
+                        print(f"slideshow download url is None, please check your network.")
+                        # self.append_crawled_list(slide_link)
+                else:
+                    print(f"slideshow does not meet conditions, skip.")
+                    self.append_crawled_list(slide_link)
             else:
                 print(f"slideshow not allow downloads.")
                 self.append_crawled_list(slide_link)
         else:
             print(f"slideshow not in page_props.keys: {page_props}")
-            
+
         print("-" * 50)
+
+    def slide_filter(self, slide_title, slider_likes):
+        if "quiz" not in slide_title.lower() and int(slider_likes) >= 5:
+            return True
+        else:
+            return False
 
     def get_slide_download_url(self, slide_link, download_key, slideshow_id):
         mock_headers = {
@@ -230,7 +240,7 @@ class SlideDownloader:
                             print(f"crawl error: {str(e)}")
                             if str(e) == "limit of 100 downloads in last 24 hours":
                                 print(f"pause 24 hours.")
-                                time.sleep(72000)
+                                time.sleep(21600)
 
                 category_type_page_info = category_type_results["pageInfo"]
                 has_next_page = category_type_page_info["hasNextPage"]
@@ -247,25 +257,28 @@ class SlideDownloader:
             payload = self.get_featured_payload(after_cursor, slide_category_id)
 
         response = requests.post(self.slide_data_api, headers=self.headers, json=payload).text
-        category_type_results = json.loads(response)["data"][category_type]
+        json_response = json.loads(response)
+        print(f"json response: {json_response}")
+        if "data" in json_response.keys():
+            category_type_results = json_response["data"][category_type]
 
-        for category_type_result in category_type_results["edges"]:
-            category_sub_url = category_type_result["node"]["canonicalUrl"]
-            if category_sub_url not in self.crawled_url_list:
-                try:
-                    print(f"crawl url: {category_sub_url}")
-                    self.get_slide_info(category_sub_url)
-                except Exception as e:
-                    print(f"crawl error: {str(e)}")
-                    if str(e) == "limit of 100 downloads in last 24 hours":
-                        print(f"pause 24 hours.")
-                        time.sleep(21600)
+            for category_type_result in category_type_results["edges"]:
+                category_sub_url = category_type_result["node"]["canonicalUrl"]
+                if category_sub_url not in self.crawled_url_list:
+                    try:
+                        print(f"crawl url: {category_sub_url}")
+                        self.get_slide_info(category_sub_url)
+                    except Exception as e:
+                        print(f"crawl error: {str(e)}")
+                        if str(e) == "limit of 100 downloads in last 24 hours":
+                            print(f"pause 24 hours.")
+                            time.sleep(72000)
 
-        category_type_page_info = category_type_results["pageInfo"]
-        has_next_page = category_type_page_info["hasNextPage"]
-        if has_next_page:
-            end_cursor = category_type_page_info["endCursor"]
-            self.get_category_type_next_slides(category_type, end_cursor, slide_category_id)
+            category_type_page_info = category_type_results["pageInfo"]
+            has_next_page = category_type_page_info["hasNextPage"]
+            if has_next_page:
+                end_cursor = category_type_page_info["endCursor"]
+                self.get_category_type_next_slides(category_type, end_cursor, slide_category_id)
 
 
 if __name__ == '__main__':
