@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 class SlideDownloader:
     def __init__(self):
-        self.cookie_path = "./conditions/cookie.txt"
+        self.cookie_path = "conditions/cookies.json"
         self.slide_category_list_path = "./conditions/slideCategoryList.json"
         self.slides_output_folder = "./output/slides"
         self.jsonl_output_folder = "./output/jsonl"
@@ -16,7 +16,9 @@ class SlideDownloader:
         self.slide_info_record_jsonl = "slide_info_record.jsonl"
         self.slide_info_record_jsonl_path = f"{self.jsonl_output_folder}/{self.slide_info_record_jsonl}"
 
-        self.cookie = self.read_cookie()
+        self.cookies = self.read_cookies()
+        self.cookie_index = 0
+        self.cookie = self.cookies[self.cookie_index]
         self.slide_category_list = self.read_slide_categories()
         self.saved_slide_info_list = self.get_saved_slide_info_list()
         self.crawled_url_list = self.get_crawled_url_list()
@@ -27,10 +29,26 @@ class SlideDownloader:
         }
         self.slide_data_api = "https://api.slidesharecdn.com/graphql"
 
-    def read_cookie(self):
+    def read_cookies(self):
+        cookies = []
         with open(self.cookie_path, mode="r", encoding="utf-8") as r:
-            cookie = r.read()
-            return cookie
+            result = json.loads(r.read())[0]
+            for key in result.keys():
+                cookies.append(result[key])
+            return cookies
+
+    def change_cookie(self):
+        if self.cookie_index < len(self.cookies) - 1:
+            self.cookie_index += 1
+            self.cookie = self.cookies[self.cookie_index]
+        else:
+            self.cookie_index = 0
+            self.cookie = self.cookies[self.cookie_index]
+            time.sleep(21600)
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.46",
+            "Cookie": self.cookie
+        }
 
     def read_slide_categories(self):
         with open(self.slide_category_list_path, mode="r", encoding="utf-8") as r:
@@ -66,6 +84,7 @@ class SlideDownloader:
         script_json = json.loads(script_string)
         # print(f"script json: {script_json}")
         page_props = script_json["props"]["pageProps"]
+        # print(f"page_props: {page_props}")
 
         if "slideshow" in page_props.keys():
             slide_show = page_props["slideshow"]
@@ -80,6 +99,13 @@ class SlideDownloader:
                     if slide_download_url:
                         if "limit of 100 downloads in last 24 hours" not in slide_download_url:
                             self.download_slide(slideshow_id, slide_download_url)
+                            try:
+                                views = soup.select(".MetadataAbovePlayer_root__2cGVN .Likes_root__WVQ1_")[
+                                    -1].text.replace(" views", "")
+                            except Exception as e:
+                                print(f"tree error: {str(e)}, change to another tree")
+                                views = soup.select(".MetadataBelowPlayer_root__OIgzT .Likes_root__WVQ1_")[
+                                    -1].text.replace(" views", "")
                             json_info = {
                                 "name": f"{slideshow_id}.pdf",
                                 "title": slide_title,
@@ -87,9 +113,7 @@ class SlideDownloader:
                                 "categories": slide_show["categories"],
                                 "link": slide_show["canonicalUrl"],
                                 "likes": slider_likes,
-                                "views": soup.select(".MetadataAbovePlayer_root__2cGVN .Likes_root__WVQ1_")[
-                                    -1].text.replace(
-                                    " views", ""),
+                                "views": views,
                                 "creation_time": slide_show["createdAt"],
                                 "sharer": slide_show["username"],
                                 "total_slides": slide_show["totalSlides"]
@@ -97,7 +121,10 @@ class SlideDownloader:
                             self.append_jsonl(json.dumps(json_info, ensure_ascii=False))
                             self.append_crawled_list(slide_link)
                         else:
-                            raise ValueError("limit of 100 downloads in last 24 hours")
+                            print(f"current account download limited, change to another account.")
+                            self.change_cookie()
+                            self.get_slide_info(slide_link)
+                            # raise ValueError("limit of 100 downloads in last 24 hours")
                     else:
                         print(f"slideshow download url is None, please check your network.")
                         # self.append_crawled_list(slide_link)
@@ -138,6 +165,7 @@ class SlideDownloader:
         verify_url = f"https://www.slideshare.net/slideshow/download?download_key={download_key}&slideshow_id={slideshow_id}"
         response = requests.post(verify_url, headers=mock_headers).content
         response = json.loads(response)
+        # print(f"get_slide_download_url: {response}")
         if response["success"]:
             slide_download_url = response["url"]
             print(f"slide download url: {slide_download_url}")
@@ -283,5 +311,5 @@ class SlideDownloader:
 
 if __name__ == '__main__':
     sd = SlideDownloader()
-    # sd.get_slide_info("https://www.slideshare.net/LilyRay1/googles-just-not-that-into-you-understanding-core-updates-search-intent")
+    # sd.get_slide_info("https://www.slideshare.net/boardofinnovation/full-program-tools-to-accelerate-an-internal-innovation-project-by-board-of-innovation")
     sd.crawl_all_categories()
